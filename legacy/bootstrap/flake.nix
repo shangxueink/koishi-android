@@ -23,8 +23,8 @@
         aarch64-pkgs = pkgs.pkgsCross.aarch64-multiplatform;
     in {
         packages = {
-            bootstrap       = aarch64-pkgs.callPackage ./bootstrap.nix {};
-            bootstrap-extra = aarch64-pkgs.callPackage ./bootstrap.nix { full = true; };
+            bootstrap       = pkgs.callPackage ./bootstrap.nix { prootPkg = aarch64-pkgs.proot; };
+            bootstrap-extra = pkgs.callPackage ./bootstrap.nix { full = true; prootPkg = aarch64-pkgs.proot; };
         };
         apps = let
             app = bootstrap: mkApp {

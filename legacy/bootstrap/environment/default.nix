@@ -17,7 +17,7 @@ in buildEnv {
         login env
         certs
         busybox zip
-        nodejs
+        nodejs_22
     ] ++ (optionals full [
         fonts
         chromium
