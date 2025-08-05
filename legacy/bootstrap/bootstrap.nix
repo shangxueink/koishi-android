@@ -12,7 +12,7 @@ let
     for i in "${info}"; do
       cp -r $i $out/nix/store
     done
-    cp ${pkgs.prootTermux}/bin/proot-static $out
+    cp ${pkgs.proot}/bin/proot $out/proot-static
     chmod -R u+w $out/nix $out/proot-static
 
     find $out -executable -type f | sed s@^$out/@@ > $out/EXECUTABLES.txt
