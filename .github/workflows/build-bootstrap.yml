@@ -82,6 +82,17 @@ jobs:
         echo "Env.txt content:"
         cat legacy/app/src/main/assets/bootstrap/env.txt
         
+        # Verify proot-static architecture
+        echo "Verifying proot-static architecture..."
+        unzip -q legacy/app/src/main/assets/bootstrap/bootstrap.zip -d /tmp/bootstrap-check
+        if [ -f /tmp/bootstrap-check/proot-static ]; then
+          file /tmp/bootstrap-check/proot-static
+          echo "Architecture check:"
+          file /tmp/bootstrap-check/proot-static | grep -q "aarch64" && echo "✓ ARM64 architecture confirmed" || echo "✗ Wrong architecture detected"
+        else
+          echo "✗ proot-static not found in bootstrap.zip"
+        fi
+        
     - name: Upload bootstrap artifacts
       uses: actions/upload-artifact@v4
       with:
