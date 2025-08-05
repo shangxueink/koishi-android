@@ -22,6 +22,10 @@ fun startProotProcess(
         envPath: String,
         env: Map<String, String> = mapOf(),
 ): Process {
+    // Ensure required directories exist
+    File("$packagePath/tmp").mkdirs()
+    File("$packagePath/shm").mkdirs()
+
     val processBuilder =
             ProcessBuilder(
                             "$packagePath/data/proot-static",
@@ -41,8 +45,14 @@ fun startProotProcess(
                             "/proc:/proc",
                             "-b",
                             "/dev:/dev",
+                            "-b",
+                            "/sys:/sys",
                             "--sysvipc",
                             "--link2symlink",
+                            "--kill-on-exit",
+                            "-w",
+                            "/home", // Set working directory to /home
+                            "/bin/sh",
                             "/bin/login",
                             "-c",
                             cmd
@@ -51,7 +61,8 @@ fun startProotProcess(
     val environment = processBuilder.environment()
     environment.putAll(env)
     environment["PROOT_TMP_DIR"] = "$packagePath/tmp"
-    environment["PATH"] = "/bin:/usr/bin"
+    environment["PROOT_NO_SECCOMP"] = "1"
+    environment["TMPDIR"] = "/tmp"
     return processBuilder.start()
 }
 

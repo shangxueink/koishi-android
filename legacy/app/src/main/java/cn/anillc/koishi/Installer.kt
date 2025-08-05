@@ -23,9 +23,7 @@ fun install(context: Context): String {
     if (!home.exists()) {
         if (!home.mkdirs()) throw Exception("failed to copy koishi.zip to home")
         val copyFile = { src: String, dst: String ->
-            context.assets.open(src).use {
-                FileOutputStream(dst).use(it::copyTo)
-            }
+            context.assets.open(src).use { FileOutputStream(dst).use(it::copyTo) }
         }
         copyFile("bootstrap/yarn.js", "$packagePath/home/yarn.js")
         copyFile("bootstrap/koishi.zip", "$packagePath/home/koishi.zip")
@@ -38,11 +36,13 @@ fun copyData(context: Context): String {
 
     unpackZip("bootstrap/bootstrap.zip", "data", context)
 
-    if (!File("$packageData/tmp").mkdir()) {
+    val tmpDir = File("$packageData/tmp")
+    if (!tmpDir.exists() && !tmpDir.mkdirs()) {
         throw Exception("failed to create tmp folder")
     }
 
-    if (!File("$packageData/shm").mkdir()) {
+    val shmDir = File("$packageData/shm")
+    if (!shmDir.exists() && !shmDir.mkdirs()) {
         throw Exception("failed to create shm folder")
     }
 
@@ -87,17 +87,22 @@ fun unpackZip(fileName: String, target: String, context: Context) {
     try {
         zip = ZipInputStream(context.assets.open(fileName))
         var entry: ZipEntry?
-        while (run { entry = zip.nextEntry; entry } != null) {
+        while (run {
+            entry = zip.nextEntry
+            entry
+        } != null) {
             val zipEntry = entry!!
             when (zipEntry.name) {
                 // readLine will closes stream
-                "EXECUTABLES.txt" -> executables.addAll(zip.reader()
-                    .readText().split("\n").filter { it != "" })
-                "SYMLINKS.txt" -> symlinks.addAll(zip.reader()
-                    .readText().split("\n").filter { it != "" }.map {
-                        val (to, from) = it.split("←")
-                        to to from
-                    })
+                "EXECUTABLES.txt" ->
+                        executables.addAll(zip.reader().readText().split("\n").filter { it != "" })
+                "SYMLINKS.txt" ->
+                        symlinks.addAll(
+                                zip.reader().readText().split("\n").filter { it != "" }.map {
+                                    val (to, from) = it.split("←")
+                                    to to from
+                                }
+                        )
                 else -> {
                     val name = zipEntry.name
                     val file = File(stagingPath, name)
@@ -106,9 +111,7 @@ fun unpackZip(fileName: String, target: String, context: Context) {
                     } else {
                         file.parentFile!!.mkdirs()
 
-                        FileOutputStream(file).use {
-                            zip.copyTo(it)
-                        }
+                        FileOutputStream(file).use { zip.copyTo(it) }
                     }
                 }
             }
