@@ -47,9 +47,9 @@ jobs:
       run: |
         cd koishi-android/legacy/bootstrap/environment
         if [ "${{ github.event.inputs.node_version }}" = "20" ]; then
-          sed -i 's/nodejs_22/nodejs_20/g' default.nix
+          sed -i 's/nodejs/nodejs_20/g' default.nix
         elif [ "${{ github.event.inputs.node_version }}" = "22" ]; then
-          sed -i 's/nodejs_20/nodejs_22/g' default.nix
+          sed -i 's/nodejs/nodejs_22/g' default.nix
         fi
         
     - name: Build bootstrap environment
