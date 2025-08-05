@@ -20,7 +20,9 @@
                     })
             ];
         };
-        aarch64-pkgs = pkgs.pkgsCross.aarch64-multiplatform;
+        aarch64-pkgs = import nixpkgs {
+            system = "aarch64-linux";
+        };
     in {
         packages = {
             bootstrap       = pkgs.callPackage ./bootstrap.nix {};
