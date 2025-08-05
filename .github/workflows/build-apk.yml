@@ -1,0 +1,190 @@
+name: Build Koishi Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22'
+        type: choice
+        options:
+          - '20'
+          - '22'
+      full_build:
+        description: 'Build with full environment (includes chromium)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-bootstrap:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    
+    steps:
+    - name: Clone koishi-android repository
+      run: |
+        git clone https://github.com/koishijs/koishi-android
+        cd koishi-android
+        ls -la
+      
+    - name: Install Nix
+      uses: cachix/install-nix-action@v24
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          
+    - name: Setup Nix cache
+      uses: cachix/cachix-action@v12
+      with:
+        name: nix-community
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        
+    - name: Update Node.js version in environment config
+      run: |
+        cd koishi-android/legacy/bootstrap/environment
+        if [ "${{ github.event.inputs.node_version }}" = "20" ]; then
+          sed -i 's/nodejs_22/nodejs_20/g' default.nix
+        elif [ "${{ github.event.inputs.node_version }}" = "22" ]; then
+          sed -i 's/nodejs_20/nodejs_22/g' default.nix
+        fi
+        
+    - name: Build bootstrap environment
+      run: |
+        cd koishi-android/legacy/bootstrap
+        if [ "${{ github.event.inputs.full_build }}" = "true" ]; then
+          nix run .#copy-extra
+        else
+          nix run .#copy
+        fi
+        
+    - name: Verify generated files
+      run: |
+        cd koishi-android
+        ls -la legacy/app/src/main/assets/bootstrap/
+        echo "Bootstrap.zip size:"
+        du -h legacy/app/src/main/assets/bootstrap/bootstrap.zip
+        echo "Env.txt content:"
+        cat legacy/app/src/main/assets/bootstrap/env.txt
+        
+    - name: Upload bootstrap artifacts
+      id: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: bootstrap-files-node${{ github.event.inputs.node_version }}
+        path: |
+          koishi-android/legacy/app/src/main/assets/bootstrap/bootstrap.zip
+          koishi-android/legacy/app/src/main/assets/bootstrap/env.txt
+        retention-days: 1
+
+  build-apk:
+    needs: build-bootstrap
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Clone koishi-android repository
+      run: |
+        git clone https://github.com/koishijs/koishi-android
+        cd koishi-android
+        ls -la
+        
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Download bootstrap artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: bootstrap-files-node${{ github.event.inputs.node_version }}
+        path: bootstrap-artifacts/
+        
+    - name: Download additional dependencies
+      run: |
+        cd koishi-android
+        
+        # Download koishi boilerplate
+        echo "Downloading koishi boilerplate..."
+        curl -L -o legacy/app/src/main/assets/bootstrap/koishi.zip \
+          "https://github.com/koishijs/boilerplate/releases/download/v1.14.1/boilerplate-v1.14.1-linux-arm64-node20.zip"
+        
+        # Download yarn.js
+        echo "Downloading yarn.js..."
+        curl -L -o legacy/app/src/main/assets/bootstrap/yarn.js \
+          "https://repo.yarnpkg.com/4.9.2/packages/yarnpkg-cli/bin/yarn.js"
+          
+    - name: Copy bootstrap files
+      run: |
+        cd koishi-android
+        
+        # Copy bootstrap.zip and env.txt from artifacts
+        cp ../bootstrap-artifacts/bootstrap.zip legacy/app/src/main/assets/bootstrap/
+        cp ../bootstrap-artifacts/env.txt legacy/app/src/main/assets/bootstrap/
+        
+        # Verify all files are in place
+        echo "Final bootstrap directory contents:"
+        ls -la legacy/app/src/main/assets/bootstrap/
+        
+        echo "File sizes:"
+        du -h legacy/app/src/main/assets/bootstrap/*
+        
+    - name: Make gradlew executable
+      run: |
+        cd koishi-android/legacy
+        chmod +x gradlew
+        
+    - name: Build Debug APK
+      run: |
+        cd koishi-android/legacy
+        ./gradlew assembleDebug --no-daemon --stacktrace
+        
+    - name: Build Release APK
+      run: |
+        cd koishi-android/legacy
+        ./gradlew assembleRelease --no-daemon --stacktrace
+        
+    - name: Verify APK files
+      run: |
+        cd koishi-android
+        echo "Generated APK files:"
+        find legacy/app/build/outputs/apk -name "*.apk" -exec ls -lh {} \;
+        
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: koishi-android-apk-node${{ github.event.inputs.node_version }}
+        path: |
+          koishi-android/legacy/app/build/outputs/apk/debug/*.apk
+          koishi-android/legacy/app/build/outputs/apk/release/*.apk
+        retention-days: 30
+        
+    - name: Create release (if tagged)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          koishi-android/legacy/app/build/outputs/apk/debug/*.apk
+          koishi-android/legacy/app/build/outputs/apk/release/*.apk
+        name: Koishi Android ${{ github.ref_name }}
+        body: |
+          Koishi Android APK built with Node.js ${{ github.event.inputs.node_version }}
+          
+          Files included:
+          - `app-debug.apk`: Debug version for testing
+          - `app-release.apk`: Release version for production
+          
+          Built with:
+          - Node.js ${{ github.event.inputs.node_version }}
+          - Koishi boilerplate v1.14.1
+          - Yarn 4.9.2
+          
+          Built on: ${{ github.run_id }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
