@@ -43,14 +43,28 @@ jobs:
         name: nix-community
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
         
-    - name: Update Node.js version in environment config
+    - name: Update nixpkgs and Node.js version
       run: |
-        cd koishi-android/legacy/bootstrap/environment
+        cd koishi-android/legacy/bootstrap
+        
+        # Update flake.lock to get latest nixpkgs
+        echo "Updating flake.lock to get latest nixpkgs..."
+        nix flake update
+        
+        # Update environment config
+        cd environment
+        echo "Original default.nix:"
+        cat default.nix
+        echo ""
+        
         if [ "${{ github.event.inputs.node_version }}" = "20" ]; then
           sed -i 's/nodejs/nodejs_20/g' default.nix
         elif [ "${{ github.event.inputs.node_version }}" = "22" ]; then
           sed -i 's/nodejs/nodejs_22/g' default.nix
         fi
+        
+        echo "Updated default.nix:"
+        cat default.nix
         
     - name: Build bootstrap environment
       run: |
