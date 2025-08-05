@@ -20,16 +20,7 @@
                     })
             ];
         };
-        aarch64-pkgs = import nixpkgs {
-            system = "aarch64-linux";
-            overlays = [
-                (oself: osuper: anillc.packages."aarch64-linux"
-                    // nix-on-droid.packages."aarch64-linux"
-                    // {
-                        inherit inputs;
-                    })
-            ];
-        };
+        aarch64-pkgs = pkgs.pkgsCross.aarch64-multiplatform;
     in {
         packages = {
             bootstrap       = aarch64-pkgs.callPackage ./bootstrap.nix {};
