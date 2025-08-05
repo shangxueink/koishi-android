@@ -1,13 +1,13 @@
 package cn.anillc.koishi
 
 import android.annotation.SuppressLint
-import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.content.DialogInterface
-import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import java.io.BufferedReader
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -17,36 +17,49 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 fun startProotProcess(
-    cmd: String,
-    packagePath: String,
-    envPath: String,
-    env: Map<String, String> = mapOf(),
+        cmd: String,
+        packagePath: String,
+        envPath: String,
+        env: Map<String, String> = mapOf(),
 ): Process {
-    val processBuilder = ProcessBuilder(
-        "$packagePath/data/proot-static",
-        "-r", "$packagePath/data${envPath}",
-        "-b", "$packagePath/tmp:/tmp",
-        "-b", "$packagePath/shm:/dev/shm",
-        "-b", "$packagePath/data/nix:/nix",
-        "-b", "$packagePath/data:/data",
-        "-b", "$packagePath/home:/home",
-        "-b", "/proc:/proc",
-        "-b", "/dev:/dev",
-        "--sysvipc",
-        "--link2symlink",
-        "/bin/sh", "/bin/login", "-c", cmd
-    ).redirectErrorStream(true)
+    val processBuilder =
+            ProcessBuilder(
+                            "$packagePath/data/proot-static",
+                            "-r",
+                            "$packagePath/data${envPath}",
+                            "-b",
+                            "$packagePath/tmp:/tmp",
+                            "-b",
+                            "$packagePath/shm:/dev/shm",
+                            "-b",
+                            "$packagePath/data/nix:/nix",
+                            "-b",
+                            "$packagePath/data:/data",
+                            "-b",
+                            "$packagePath/home:/home",
+                            "-b",
+                            "/proc:/proc",
+                            "-b",
+                            "/dev:/dev",
+                            "--sysvipc",
+                            "--link2symlink",
+                            "/bin/login",
+                            "-c",
+                            cmd
+                    )
+                    .redirectErrorStream(true)
     val environment = processBuilder.environment()
     environment.putAll(env)
     environment["PROOT_TMP_DIR"] = "$packagePath/tmp"
+    environment["PATH"] = "/bin:/usr/bin"
     return processBuilder.start()
 }
 
 fun startProotProcessWait(
-    cmd: String,
-    packagePath: String,
-    envPath: String,
-    env: Map<String, String> = mapOf(),
+        cmd: String,
+        packagePath: String,
+        envPath: String,
+        env: Map<String, String> = mapOf(),
 ): String? {
     val process = startProotProcess(cmd, packagePath, envPath, env)
     if (process.waitFor() != 0) return null
@@ -54,20 +67,18 @@ fun startProotProcessWait(
 }
 
 fun acceptAlert(context: Context, message: Int, callback: DialogInterface.OnClickListener) =
-    AlertDialog.Builder(context)
-        .setMessage(message)
-        .setPositiveButton(android.R.string.ok, callback)
-        .setNegativeButton(android.R.string.cancel) { _, _ -> }
-        .create().show()
+        AlertDialog.Builder(context)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, callback)
+                .setNegativeButton(android.R.string.cancel) { _, _ -> }
+                .create()
+                .show()
 
 @SuppressLint("InflateParams")
 fun loadingAlert(context: Context, message: Int): () -> Unit {
     val layout = LayoutInflater.from(context).inflate(R.layout.loading_alert, null)
     layout.findViewById<TextView>(R.id.loading_alert_text).setText(message)
-    val dialog = AlertDialog.Builder(context)
-        .setCancelable(false)
-        .setView(layout)
-        .create()
+    val dialog = AlertDialog.Builder(context).setCancelable(false).setView(layout).create()
     dialog.show()
     return dialog::dismiss
 }
@@ -79,8 +90,7 @@ fun Process.pid(): Int {
     return pid.get(this) as Int
 }
 
-fun String.removeVt100ControlChars(): String =
-    replace(Regex("\\e\\[[\\d;]*[^\\d;]"), "")
+fun String.removeVt100ControlChars(): String = replace(Regex("\\e\\[[\\d;]*[^\\d;]"), "")
 
 fun condition(): Pair<Lock, Condition> {
     val lock = ReentrantLock()
@@ -90,7 +100,7 @@ fun condition(): Pair<Lock, Condition> {
 fun Pair<Lock, Condition>.wait() = first.withLock(second::await)
 
 fun Pair<Lock, Condition>.wait(times: Long, unit: TimeUnit) =
-    first.withLock { second.await(times, unit) }
+        first.withLock { second.await(times, unit) }
 
 fun Pair<Lock, Condition>.notifyAll() = first.withLock(second::signalAll)
 
