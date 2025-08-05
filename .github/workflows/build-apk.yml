@@ -110,6 +110,9 @@ jobs:
       run: |
         cd koishi-android
         
+        # Ensure bootstrap directory exists
+        mkdir -p legacy/app/src/main/assets/bootstrap
+        
         # Download koishi boilerplate
         echo "Downloading koishi boilerplate..."
         curl -L -o legacy/app/src/main/assets/bootstrap/koishi.zip \
