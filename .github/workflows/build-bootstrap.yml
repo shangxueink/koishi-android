@@ -1,0 +1,97 @@
+name: Build Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22'
+        type: choice
+        options:
+          - '20'
+          - '22'
+      full_build:
+        description: 'Build with full environment (includes chromium)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-bootstrap:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Clone koishi-android repository
+      run: |
+        git clone https://github.com/koishijs/koishi-android
+        cd koishi-android
+        ls -la
+      
+    - name: Install Nix
+      uses: cachix/install-nix-action@v24
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          
+    - name: Setup Nix cache
+      uses: cachix/cachix-action@v12
+      with:
+        name: nix-community
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        
+    - name: Update Node.js version in environment config
+      run: |
+        cd koishi-android/legacy/bootstrap/environment
+        if [ "${{ github.event.inputs.node_version }}" = "20" ]; then
+          sed -i 's/nodejs_22/nodejs_20/g' default.nix
+        elif [ "${{ github.event.inputs.node_version }}" = "22" ]; then
+          sed -i 's/nodejs_20/nodejs_22/g' default.nix
+        fi
+        
+    - name: Build bootstrap environment
+      run: |
+        cd koishi-android/legacy/bootstrap
+        if [ "${{ github.event.inputs.full_build }}" = "true" ]; then
+          nix run .#copy-extra
+        else
+          nix run .#copy
+        fi
+        
+    - name: Verify generated files
+      run: |
+        cd koishi-android
+        ls -la legacy/app/src/main/assets/bootstrap/
+        echo "Bootstrap.zip size:"
+        du -h legacy/app/src/main/assets/bootstrap/bootstrap.zip
+        echo "Env.txt content:"
+        cat legacy/app/src/main/assets/bootstrap/env.txt
+        
+    - name: Upload bootstrap artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bootstrap-files-node${{ github.event.inputs.node_version }}
+        path: |
+          koishi-android/legacy/app/src/main/assets/bootstrap/bootstrap.zip
+          koishi-android/legacy/app/src/main/assets/bootstrap/env.txt
+        retention-days: 30
+        
+    - name: Create release (if tagged)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          koishi-android/legacy/app/src/main/assets/bootstrap/bootstrap.zip
+          koishi-android/legacy/app/src/main/assets/bootstrap/env.txt
+        name: Bootstrap Files ${{ github.ref_name }}
+        body: |
+          Bootstrap files built with Node.js ${{ github.event.inputs.node_version }}
+          
+          Files included:
+          - `bootstrap.zip`: Complete bootstrap environment for ARM64 Android
+          - `env.txt`: Environment path configuration
+          
+          Built on: ${{ github.run_id }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
