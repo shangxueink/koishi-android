@@ -26,7 +26,7 @@ jobs:
     steps:
     - name: Clone koishi-android repository
       run: |
-        git clone https://github.com/koishijs/koishi-android
+        git clone https://github.com/shangxueink/koishi-android.git
         cd koishi-android
         ls -la
       
@@ -101,7 +101,7 @@ jobs:
     steps:
     - name: Clone koishi-android repository
       run: |
-        git clone https://github.com/koishijs/koishi-android
+        git clone https://github.com/shangxueink/koishi-android.git
         cd koishi-android
         ls -la
         
@@ -129,13 +129,16 @@ jobs:
         
         # Download koishi boilerplate
         echo "Downloading koishi boilerplate..."
-        curl -L -o legacy/app/src/main/assets/bootstrap/koishi.zip \
+        curl -L -o koishi.zip \
           "https://github.com/koishijs/boilerplate/releases/download/v1.14.1/boilerplate-v1.14.1-linux-arm64-node20.zip"
+        mv koishi.zip legacy/app/src/main/assets/bootstrap/
         
         # Download yarn.js
         echo "Downloading yarn.js..."
-        curl -L -o legacy/app/src/main/assets/bootstrap/yarn.js \
+        curl -L -o yarn.js \
           "https://repo.yarnpkg.com/4.9.2/packages/yarnpkg-cli/bin/yarn.js"
+        chmod +x yarn.js
+        mv yarn.js legacy/app/src/main/assets/bootstrap/
           
     - name: Copy bootstrap files
       run: |

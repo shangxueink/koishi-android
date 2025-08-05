@@ -24,7 +24,7 @@ jobs:
     steps:
     - name: Clone koishi-android repository
       run: |
-        git clone https://github.com/koishijs/koishi-android
+        git clone https://github.com/shangxueink/koishi-android.git
         cd koishi-android
         ls -la
       
