@@ -28,12 +28,19 @@ jobs:
         cd koishi-android
         ls -la
       
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+        
     - name: Install Nix
       uses: cachix/install-nix-action@v24
       with:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: |
           experimental-features = nix-command flakes
+          extra-platforms = aarch64-linux
+          system-features = nixos-test benchmark big-parallel kvm
           
     - name: Setup Nix cache
       uses: cachix/cachix-action@v12
