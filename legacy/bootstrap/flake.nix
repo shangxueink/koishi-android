@@ -22,11 +22,18 @@
         };
         aarch64-pkgs = import nixpkgs {
             system = "aarch64-linux";
+            overlays = [
+                (oself: osuper: anillc.packages."aarch64-linux"
+                    // nix-on-droid.packages."aarch64-linux"
+                    // {
+                        inherit inputs;
+                    })
+            ];
         };
     in {
         packages = {
-            bootstrap       = pkgs.callPackage ./bootstrap.nix {};
-            bootstrap-extra = pkgs.callPackage ./bootstrap.nix { full = true; };
+            bootstrap       = aarch64-pkgs.callPackage ./bootstrap.nix {};
+            bootstrap-extra = aarch64-pkgs.callPackage ./bootstrap.nix { full = true; };
         };
         apps = let
             app = bootstrap: mkApp {
